@@ -1,0 +1,6 @@
+# rocs runtime: Python >= 3.9 standard library only. No third-party packages.
+# Tests: python -m unittest (standard library).
+#
+# Optional external tools (not Python deps, install yourself if needed):
+#   Android platform-tools (adb)        - for `rocs scan --platform android`
+#   mvt==2026.10.26 (pip, Python>=3.10) - for iPhone backups and deep Android checks (see README)

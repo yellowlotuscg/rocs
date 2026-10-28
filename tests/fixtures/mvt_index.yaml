@@ -1,0 +1,22 @@
+indicators:
+  -
+    type: github
+    name: Fake One
+    sources:
+      - Amnesty International
+    references:
+      - https://example.org/report
+    github:
+      owner: AmnestyTech
+      repo: investigations
+      branch: master
+      path: 2021-07-18_nso/pegasus.stix2
+
+  -
+    type: github
+    name: Untrusted Owner
+    github:
+      owner: random-person
+      repo: things
+      branch: main
+      path: bad.stix2

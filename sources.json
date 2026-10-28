@@ -1,0 +1,26 @@
+{
+  "_comment": "Only vetted public sources. Edit deliberately; every download is recorded with URL + SHA-256 in iocs/manifest.json.",
+  "indexes": [
+    {
+      "name": "MVT indicators index (includes Amnesty Tech, Citizen Lab, Echap and other vetted feeds)",
+      "url": "https://raw.githubusercontent.com/mvt-project/mvt-indicators/main/indicators.yaml",
+      "format": "mvt-indicators-yaml"
+    }
+  ],
+  "files": [
+    {
+      "name": "Echap stalkerware-indicators (STIX2)",
+      "url": "https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/master/generated/stalkerware.stix2"
+    },
+    {
+      "name": "Amnesty Tech: Cytrox/Predator investigation",
+      "url": "https://raw.githubusercontent.com/AmnestyTech/investigations/master/2021-12-16_cytrox/cytrox.stix2"
+    },
+    {
+      "name": "Amnesty Tech: NSO Pegasus investigation",
+      "url": "https://raw.githubusercontent.com/AmnestyTech/investigations/master/2021-07-18_nso/pegasus.stix2"
+    }
+  ],
+  "allowed_hosts": ["raw.githubusercontent.com"],
+  "allowed_owners": ["mvt-project", "AmnestyTech", "AssoEchap"]
+}

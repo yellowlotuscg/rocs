@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+iocs/
+*.report.txt
+*.report.json
+*.json.report
+rocs-*.json
+rocs-*.txt
+.DS_Store

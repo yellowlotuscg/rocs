@@ -1,0 +1,18 @@
+{"type": "bundle", "id": "bundle--00000000-0000-4000-8000-000000000000", "objects": [
+ {"type": "malware", "id": "malware--1", "name": "FakeSpy (TEST ONLY)", "is_family": false},
+ {"type": "malware", "id": "malware--2", "name": "FakeStalker (TEST ONLY)", "is_family": false},
+ {"type": "indicator", "id": "indicator--1", "pattern": "[domain-name:value = 'evil-spy.example']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--2", "pattern": "[process:name = 'fakespyd']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--3", "pattern": "[process:name = 'diagnosticd']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--4", "pattern": "[file:hashes.sha256 = '__FIXTURE_SHA256__']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--5", "pattern": "[app:id = 'com.fake.stalker']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--6", "pattern": "[app:cert.sha1 = 'AABBCC']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--7", "pattern": "[url:value = 'https://c2.bad-tracker.example/upload']", "pattern_type": "stix"},
+ {"type": "indicator", "id": "indicator--8", "pattern": "[domain-name:value = '*.wild.example'] OR [email-addr:value = 'x@evil-spy.example']", "pattern_type": "stix"},
+ {"type": "relationship", "id": "relationship--1", "relationship_type": "indicates", "source_ref": "indicator--1", "target_ref": "malware--1"},
+ {"type": "relationship", "id": "relationship--2", "relationship_type": "indicates", "source_ref": "indicator--2", "target_ref": "malware--1"},
+ {"type": "relationship", "id": "relationship--3", "relationship_type": "indicates", "source_ref": "indicator--3", "target_ref": "malware--1"},
+ {"type": "relationship", "id": "relationship--4", "relationship_type": "indicates", "source_ref": "indicator--4", "target_ref": "malware--1"},
+ {"type": "relationship", "id": "relationship--5", "relationship_type": "indicates", "source_ref": "indicator--5", "target_ref": "malware--2"},
+ {"type": "relationship", "id": "relationship--7", "relationship_type": "indicates", "source_ref": "indicator--7", "target_ref": "malware--2"}
+]}

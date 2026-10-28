@@ -1,0 +1,16 @@
+[project]
+name = "rocs"
+version = "0.1.0"
+description = "Offline, read-only spyware/stalkerware indicator sweep with an honest report"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+rocs = "rocs.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["rocs", "rocs.collectors"]
