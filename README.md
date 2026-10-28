@@ -54,6 +54,22 @@ Some decisions I'd point a reviewer at:
 - **There are no dependencies.** It runs on the Python 3.9+ standard library only,
   so there's no supply chain to audit beyond the interpreter.
 
+### What the first real run taught me
+
+The unit tests passed, and then the first scan of a real Mac reported three HIGH findings for
+visits to github.com. The cause was mine, not the data: a stalkerware feed lists two specific
+GitHub repositories as URLs, and my parser reduced every URL indicator to its host. One repo
+became "all of GitHub". The fix keeps URL indicators on big shared platforms (GitHub, Google,
+Dropbox, Telegram and similar) as host-plus-path and matches them as a path prefix; a URL on
+its own host still flags the whole host.
+
+The same run raised a dozen MEDIUM "hidden folder" leads, mostly from virtualenvs and from an
+ordinary program whose *argument* pointed at a hidden token file. The heuristic now looks at
+the program itself, and at the whole command line only when the program is an interpreter
+(python, node, a shell, osascript, PowerShell and so on), where the script is the real payload.
+Both cases are regression tests now. The lesson I keep relearning in audit work: a control
+isn't tested until it has met production data, and a noisy control gets ignored.
+
 ## Getting started
 
 ```bash

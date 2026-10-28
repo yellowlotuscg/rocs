@@ -25,7 +25,7 @@ class TestIOCs(unittest.TestCase):
             s = load_ioc_dir(H.make_ioc_dir(Path(t)))
         self.assertEqual(s.problems, [])
         self.assertIn("evil-spy.example", s.get("domain"))
-        self.assertIn("c2.bad-tracker.example", s.get("domain"))      # url -> host
+        self.assertIn("c2.bad-tracker.example", s.get("domain"))      # url on own host -> host
         self.assertIn("wild.example", s.get("domain"))                # wildcard stripped
         self.assertEqual(s.get("process")["fakespyd"].malware, "FakeSpy (TEST ONLY)")
         self.assertIn("com.fake.stalker", s.get("android_package"))
@@ -315,6 +315,49 @@ class TestCLI(unittest.TestCase):
             src = f.read_text()
             for bad in ("urllib.request", "http.client", "requests", "urlopen", "ftplib", "smtplib"):
                 self.assertNotIn(bad, src, f"{f.name} references {bad}")
+
+
+class TestFalsePositiveGuards(unittest.TestCase):
+    """Regressions from the first real macOS run: a URL indicator for one GitHub repo matched
+    every github.com visit, and a hidden-folder argument flagged an ordinary program."""
+
+    def _iocs(self):
+        from rocs.iocs import IOCSet
+        b = {"objects": [
+            {"type": "indicator", "id": "indicator--1", "name": "RepoRAT",
+             "pattern": "[url:value = 'https://github.com/someone/android-rat']"},
+            {"type": "indicator", "id": "indicator--2", "name": "C2",
+             "pattern": "[url:value = 'https://c2.bad.example/upload']"}]}
+        s = IOCSet()
+        for i in parse_stix_bundle(b, "TEST"):
+            s.add(i)
+        return s
+
+    def test_url_on_shared_platform_matches_only_that_path(self):
+        s = self._iocs()
+        self.assertNotIn("github.com", s.get("domain"))
+        self.assertIsNone(s.match_domain("github.com"))
+        self.assertIsNone(s.match_url("https://github.com/"))
+        self.assertIsNone(s.match_url("https://github.com/someone/android-rat-fork"))
+        self.assertIsNotNone(s.match_url("https://github.com/someone/android-rat"))
+        self.assertIsNotNone(s.match_url("https://www.github.com/someone/android-rat/releases?x=1"))
+
+    def test_url_on_dedicated_host_still_matches_whole_host(self):
+        self.assertIsNotNone(self._iocs().match_domain("c2.bad.example"))
+
+    def test_hidden_folder_heuristic_checks_program_not_arguments(self):
+        from rocs.common import check_command_line
+        from rocs.iocs import IOCSet
+        rep = Report("macos")
+        check_command_line(rep, IOCSet(), "launchd", "tunnel",
+                           "/opt/tool/bin/agent run --token-file /Users/a/.secret/token")
+        check_command_line(rep, IOCSet(), "launchd", "venv-app",
+                           "/Users/a/proj/.venv/bin/python /Users/a/proj/app.py")
+        self.assertEqual(rep.findings, [])
+        check_command_line(rep, IOCSet(), "launchd", "script",
+                           "/usr/bin/python3 -I /Users/a/.hidden-thing/run.py")
+        check_command_line(rep, IOCSet(), "launchd", "binary", "/Users/a/.cache2/x/agent")
+        self.assertEqual(len(sev(rep, "medium")), 2)
 
 
 if __name__ == "__main__":

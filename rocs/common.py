@@ -134,7 +134,7 @@ class Env:
 
 # ----------------------------------------------------------------- helpers
 
-_COMMON_DOTDIRS = r"(?!(?:local|config|cargo|rustup|nvm|pyenv|rbenv|sdkman|deno|bun|volta|asdf|vscode|cursor|npm|dotnet)/)"
+_COMMON_DOTDIRS = r"(?!(?:local|config|cargo|venv|rustup|nvm|pyenv|rbenv|sdkman|deno|bun|volta|asdf|vscode|cursor|npm|dotnet)/)"
 _SUSP_UNIX = re.compile(r"(^|[\s\"'=:])(/tmp/|/var/tmp/|/dev/shm/|/Users/Shared/|/private/tmp/)"
                         r"|(^|[\s\"'=:])/\S*?/\." + _COMMON_DOTDIRS + r"[^/\s]+/")
 _SUSP_WIN = re.compile(r"(\\Users\\Public\\|\\AppData\\Local\\Temp\\|\\Windows\\Temp\\|%TEMP%|\\ProgramData\\[^\\]+\.exe)", re.I)
@@ -176,6 +176,19 @@ def first_path(cmd: str) -> str:
     return cmd.split()[0] if cmd else ""
 
 
+_INTERPRETERS = re.compile(r"^(python[0-9.]*|node|bash|sh|zsh|dash|ksh|perl|ruby|php|java|env|osascript|"
+                           r"powershell|pwsh|cmd|wscript|cscript|mshta|rundll32|regsvr32)(\.exe)?$", re.I)
+
+
+def _susp_target(cmd: str, exe: str) -> str:
+    """Which text the odd-folder heuristic should look at: the program itself, or the whole
+    command line when the program is an interpreter (its script is the real payload).
+    Ordinary programs are not flagged just because an argument points at a hidden folder."""
+    if _INTERPRETERS.match(basename_any(exe)):
+        return cmd or ""
+    return exe or ""
+
+
 def check_command_line(rep: Report, iocs: IOCSet, area: str, name: str, cmd: str,
                        env: Env | None = None, hashed: set | None = None) -> None:
     """Shared logic for any persistence entry: IOC names, domains, hashes, odd paths."""
@@ -198,7 +211,7 @@ def check_command_line(rep: Report, iocs: IOCSet, area: str, name: str, cmd: str
                     {"entry": name, "command": cmd},
                     {"kind": "domain", "value": hit.value, "malware": hit.malware, "source": hit.source},
                     "Do not delete it yet. Preserve evidence and get expert help.")
-    if SUSPICIOUS_DIRS.search(" " + (cmd or "")):
+    if SUSPICIOUS_DIRS.search(" " + _susp_target(cmd, exe)):
         rep.add("medium", area, f"{area} entry runs from a temporary, shared or hidden folder",
                 f"'{name}' runs '{cmd}'. Legitimate software rarely auto-starts from these locations, "
                 "but some does. This is a lead to review, not proof of infection.",
@@ -268,7 +281,7 @@ def scan_browser_histories(rep: Report, iocs: IOCSet, dbs: list[tuple[str, str, 
             host = urlsplit(url).hostname
             if not host:
                 continue
-            ioc = iocs.match_domain(host)
+            ioc = iocs.match_domain(host) or iocs.match_url(url)
             if ioc:
                 hits.setdefault(host, [ioc, 0, url])[1] += max(visits, 1)
         for host, (ioc, n, sample) in hits.items():
@@ -276,7 +289,7 @@ def scan_browser_histories(rep: Report, iocs: IOCSet, dbs: list[tuple[str, str, 
                     f"{n} visit(s) to {host}, listed for {ioc.malware}. A visit can mean an "
                     "infection link was opened, or only that the site was looked up; context matters.",
                     {"browser": label, "host": host, "visits": n, "example_url": sample[:200]},
-                    {"kind": "domain", "value": ioc.value, "malware": ioc.malware, "source": ioc.source},
+                    {"kind": ioc.kind, "value": ioc.value, "malware": ioc.malware, "source": ioc.source},
                     "Note when you visited it and get expert help before changing anything.")
         rep.ok(f"Browser history: {label}", len(rows))
     if not found_any:

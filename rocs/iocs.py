@@ -12,7 +12,7 @@ from urllib.parse import urlsplit
 # STIX object path -> our indicator kind
 KIND_MAP = {
     "domain-name:value": "domain",
-    "url:value": "domain",          # we keep only the host part
+    "url:value": "url",             # full URL; whole-site URLs become domains
     "process:name": "process",
     "file:name": "filename",
     "file:hashes.sha256": "sha256",
@@ -58,11 +58,57 @@ class IOCSet:
                 return doms[cand]
         return None
 
+    def match_url(self, url: str) -> IOC | None:
+        """Match a visited URL against URL indicators by host + path prefix, so an
+        indicator like https://github.com/<repo> only hits that repo, not all of github.com."""
+        urls = self.get("url")
+        if not urls:
+            return None
+        key = url_key(url)
+        if not key:
+            return None
+        host, _, path = key.partition("/")
+        segs = [x for x in path.split("/") if x]
+        for h in {host, host[4:] if host.startswith("www.") else host}:
+            for i in range(len(segs), 0, -1):
+                cand = h + "/" + "/".join(segs[:i])
+                if cand in urls:
+                    return urls[cand]
+        return None
+
     def age_days(self) -> float | None:
         if not self.oldest_fetch:
             return None
         t = _dt.datetime.fromisoformat(self.oldest_fetch)
         return round((_dt.datetime.now(_dt.timezone.utc) - t).total_seconds() / 86400, 1)
+
+
+# Big shared platforms. A URL indicator on one of these names one page or repo, never the
+# whole site, so it is matched by host + path prefix instead of by domain.
+SHARED_HOSTS = frozenset("""
+github.com githubusercontent.com gitlab.com bitbucket.org sourceforge.net google.com
+googleapis.com googleusercontent.com dropbox.com dropboxusercontent.com t.me telegram.me
+telegram.org youtube.com youtu.be facebook.com instagram.com twitter.com x.com
+mediafire.com mega.nz pastebin.com discord.com discordapp.com amazonaws.com apple.com
+icloud.com microsoft.com live.com onedrive.com sharepoint.com yandex.ru bit.ly
+""".split())
+
+
+def is_shared_host(host: str) -> bool:
+    host = host.lower().strip(".")
+    return any(host == h or host.endswith("." + h) for h in SHARED_HOSTS)
+
+
+def url_key(url: str) -> str | None:
+    """'https://WWW.Example.com/a/b/?q' -> 'www.example.com/a/b' (host lowercased, no query)."""
+    try:
+        parts = urlsplit(url if "://" in url else "http://" + url)
+        host = (parts.hostname or "").strip(".")
+    except ValueError:
+        return None
+    if not host:
+        return None
+    return host + "/" + parts.path.strip("/")
 
 
 def _normalise(kind: str, value: str) -> str | None:
@@ -97,7 +143,17 @@ def parse_stix_bundle(data: dict, source: str) -> list[IOC]:
             kind = KIND_MAP.get(path.lower())
             if not kind:
                 continue
-            v = _normalise(kind, val)
+            if kind == "url":
+                key = url_key(val.replace("\\'", "'").strip())
+                if not key:
+                    continue
+                host, _, path = key.partition("/")
+                if path and is_shared_host(host):
+                    v = key                          # e.g. one GitHub repo, not all of GitHub
+                else:
+                    kind, v = "domain", host
+            else:
+                v = _normalise(kind, val)
             if v:
                 out.append(IOC(kind, v, mal, source))
     return out
